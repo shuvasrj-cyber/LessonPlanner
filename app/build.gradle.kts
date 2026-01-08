@@ -1,4 +1,3 @@
-// App Module build.gradle.kts
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -13,12 +12,13 @@ android {
         applicationId = "com.example.lessonplanner"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
+        multiDexEnabled = true // Enabled for larger builds
     }
 
     buildTypes {
@@ -36,7 +36,7 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true // Needed for hiding API keys later if you choose to
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
@@ -49,12 +49,9 @@ android {
 }
 
 dependencies {
-    // Core Android
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
-    
-    // Jetpack Compose (UI)
     implementation(platform("androidx.compose:compose-bom:2023.08.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -67,9 +64,12 @@ dependencies {
     implementation("androidx.room:room-ktx:$room_version")
     ksp("androidx.room:room-compiler:$room_version")
     
-    // Google Gemini AI
+    // Gemini AI
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    
+    // Icons extended (for the Export icon)
+    implementation("androidx.compose.material:material-icons-extended:1.5.0")
 }
