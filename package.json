@@ -1,0 +1,11 @@
+{
+  "name": "shikshak-sahaya",
+  "version": "1.0.0",
+  "description": "Nepali Lesson Plan AI",
+  "dependencies": {
+    "@capacitor/android": "^5.0.0",
+    "@capacitor/cli": "^5.0.0",
+    "@capacitor/core": "^5.0.0"
+  },
+  "devDependencies": {}
+}
