@@ -1,12 +1,12 @@
-// --- GLOBAL VARIABLES ---
+// --- GLOBAL CONFIG ---
 const HISTORY_KEY = "shikshak_history_v1";
 const API_STORAGE_KEY = "shikshak_gemini_key";
-let apiKey = localStorage.getItem(API_STORAGE_KEY);
 let currentLessonData = null; // Store text for saving
 
 // --- INITIALIZATION ---
 window.onload = function() {
-    if (!apiKey) {
+    const storedKey = localStorage.getItem(API_STORAGE_KEY);
+    if (!storedKey) {
         document.getElementById('api-modal').classList.remove('hidden');
     }
     loadHistory();
@@ -15,32 +15,42 @@ window.onload = function() {
 // --- API KEY MANAGEMENT ---
 window.saveApiKey = function() {
     const input = document.getElementById('api-input').value.trim();
-    if (input.length > 10) {
+    // Basic validation: Google keys usually start with AIza
+    if (input.length > 20) {
         localStorage.setItem(API_STORAGE_KEY, input);
-        apiKey = input;
         document.getElementById('api-modal').classList.add('hidden');
-        alert("API Key Saved! You are ready.");
+        alert("Success! API Key saved.");
     } else {
-        alert("Invalid API Key");
+        alert("Key appears too short. Please copy the full key.");
     }
 }
 
 window.clearKey = function() {
-    if(confirm("Reset API Key?")) {
+    if(confirm("Do you want to remove the API Key?")) {
         localStorage.removeItem(API_STORAGE_KEY);
-        location.reload();
+        location.reload(); // Refresh to show the modal again
     }
 }
 
 // --- CORE FUNCTIONS ---
 
-// 1. Generate Logic
 window.generatePlan = async function() {
+    // 1. GET KEY FRESH FROM STORAGE (Fixes the bug)
+    const apiKey = localStorage.getItem(API_STORAGE_KEY);
+    
+    if (!apiKey) {
+        document.getElementById('api-modal').classList.remove('hidden');
+        return;
+    }
+
     const grade = document.getElementById('grade').value;
-    const unit = document.getElementById('unit').value;
+    const unit = document.getElementById('unit').value || "Unit 1";
     const topic = document.getElementById('topic').value;
 
-    if (!topic) { alert("Please enter a Topic Name"); return; }
+    if (!topic) { 
+        alert("कृपया पाठको विषय (Topic) लेख्नुहोस्।"); 
+        return; 
+    }
 
     // UI Loading State
     const btnText = document.getElementById('btn-text');
@@ -53,7 +63,7 @@ window.generatePlan = async function() {
 
     try {
         const promptText = `
-        Act as a Nepali Curriculum expert (CDC Nepal). 
+        Act as a Nepali Curriculum expert. 
         Create a Lesson plan for Class: ${grade}, Unit: ${unit}, Topic: ${topic}.
         Language: Nepali (Devanagari Only).
         Format strict Markdown:
@@ -70,6 +80,7 @@ window.generatePlan = async function() {
         - [Homework]
         `;
 
+        // 2. FETCH REQUEST
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -80,7 +91,11 @@ window.generatePlan = async function() {
 
         const data = await response.json();
         
-        if (data.error) throw new Error(data.error.message);
+        // 3. ERROR HANDLING
+        if (!response.ok) {
+            console.error(data);
+            throw new Error(data.error?.message || "Invalid API Key");
+        }
         
         const rawText = data.candidates[0].content.parts[0].text;
         
@@ -97,7 +112,7 @@ window.generatePlan = async function() {
         document.getElementById('result-card').classList.remove('hidden');
 
     } catch (error) {
-        alert("Error: " + error.message);
+        alert("Error: " + error.message + "\n\nTip: Click 'Key Reset' and paste a valid key.");
     } finally {
         // Reset UI
         btn.disabled = false;
@@ -106,60 +121,58 @@ window.generatePlan = async function() {
     }
 }
 
-// 2. Save to History (Local Storage)
+// --- HISTORY & PDF UTILITIES ---
+
 window.saveToHistory = function() {
     if (!currentLessonData) return;
     const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-    history.unshift(currentLessonData); // Add to top
+    history.unshift(currentLessonData); 
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     alert("Saved to History tab!");
-    loadHistory(); // Refresh tab
+    loadHistory(); 
 }
 
-// 3. Export PDF with Custom Font (TTF)
 window.exportToPdf = async function() {
+    if (!currentLessonData) return;
     const btn = document.getElementById('pdf-btn');
     const oldText = btn.innerText;
-    btn.innerText = "Generating PDF...";
+    btn.innerText = "Processing...";
     
     try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        // LOAD FONT FILE (Assuming file name is 'font.ttf')
-        // We use fetch because in PWA we can access relative files
+        // NOTE: For correct Nepali text in PDF, you need a .ttf file
+        // Ensure 'font.ttf' exists in the same folder as index.html
         const fontUrl = './font.ttf'; 
-        const fontBytes = await fetch(fontUrl).then(res => {
-            if (!res.ok) throw new Error("font.ttf not found in folder");
-            return res.arrayBuffer();
-        });
+        
+        try {
+            const fontBytes = await fetch(fontUrl).then(res => {
+                if (!res.ok) throw new Error("font.ttf missing");
+                return res.arrayBuffer();
+            });
 
-        // Convert to Base64 manually
-        let binary = '';
-        const bytes = new Uint8Array(fontBytes);
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
+            const binary = new Uint8Array(fontBytes).reduce((data, byte) => data + String.fromCharCode(byte), '');
+            const fontBase64 = btoa(binary);
+
+            doc.addFileToVFS('Nepali.ttf', fontBase64);
+            doc.addFont('Nepali.ttf', 'Nepali', 'normal');
+            doc.setFont('Nepali');
+        } catch (e) {
+            console.warn("Font load failed, using default (Nepali may not show correctly)");
+            alert("Warning: 'font.ttf' file not found. Nepali text might look wrong in PDF.");
         }
-        const fontBase64 = btoa(binary);
 
-        // Add font to PDF VFS
-        doc.addFileToVFS('MyNepaliFont.ttf', fontBase64);
-        doc.addFont('MyNepaliFont.ttf', 'MyNepaliFont', 'normal');
-        doc.setFont('MyNepaliFont');
-
-        // Write Text
         doc.setFontSize(16);
-        doc.text(`Lesson Plan: Class ${currentLessonData.grade}`, 10, 20);
+        doc.text(`Lesson Plan: ${currentLessonData.topic}`, 10, 20);
+        
         doc.setFontSize(12);
-        
-        // Clean markdown symbols for PDF clarity
-        const cleanText = currentLessonData.content.replace(/\*\*/g, '').replace(/#/g, '');
-        
-        // Split text to fit page
-        const splitText = doc.splitTextToSize(cleanText, 180);
+        // Basic cleanup of markdown symbols
+        const cleanText = currentLessonData.content.replace(/[#*]/g, '');
+        const lines = doc.splitTextToSize(cleanText, 180);
         
         let y = 30;
-        splitText.forEach(line => {
+        lines.forEach(line => {
             if (y > 280) { doc.addPage(); y = 20; }
             doc.text(line, 10, y);
             y += 7;
@@ -168,13 +181,14 @@ window.exportToPdf = async function() {
         doc.save(`${currentLessonData.topic}.pdf`);
 
     } catch (e) {
-        alert("PDF Error: " + e.message + "\nMake sure 'font.ttf' is in your Acode folder!");
+        alert("PDF Error: " + e.message);
     } finally {
         btn.innerText = oldText;
     }
 }
 
-// --- UTILITIES ---
+// --- NAVIGATION & HISTORY DISPLAY ---
+
 window.switchView = function(viewName) {
     const create = document.getElementById('view-create');
     const history = document.getElementById('view-history');
@@ -207,7 +221,7 @@ window.loadHistory = function() {
     list.innerHTML = history.map((item, index) => `
         <div class="bg-white p-4 rounded shadow border-l-4 border-blue-600 relative">
             <h3 class="font-bold text-gray-800">${item.topic}</h3>
-            <p class="text-xs text-gray-500">Class: ${item.grade} | Date: ${item.date}</p>
+            <p class="text-xs text-gray-500">Class: ${item.grade} | ${item.date}</p>
             <div class="absolute top-4 right-4 flex gap-2">
                 <button onclick="deleteItem(${index})" class="text-red-500 text-xs border border-red-200 p-1 rounded">Delete</button>
             </div>
@@ -226,10 +240,8 @@ window.deleteItem = function(index) {
 
 window.loadFromHistory = function(index) {
     const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-    const item = history[index];
-    
-    currentLessonData = item;
-    document.getElementById('ai-output').innerHTML = marked.parse(item.content);
+    currentLessonData = history[index];
+    document.getElementById('ai-output').innerHTML = marked.parse(currentLessonData.content);
     document.getElementById('result-card').classList.remove('hidden');
-    switchView('create'); // Go back to main view
+    switchView('create');
 }
