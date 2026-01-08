@@ -29,6 +29,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
+// This annotation fixes the "Experimental API" error
+@OptIn(ExperimentalMaterial3Api::class)
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme {
+                LessonPlannerApp()
+            }
+        }
+    }
+}
+
 // ==============================
 // 1. DATA LAYER (ROOM DATABASE)
 // ==============================
@@ -41,7 +54,7 @@ data class LessonPlan(
     val date: String,
     val period: String,
     val description: String,
-    val generatedPlan: String // The AI Output
+    val generatedPlan: String
 )
 
 @Dao
@@ -53,7 +66,8 @@ interface LessonPlanDao {
     suspend fun insertPlan(plan: LessonPlan)
 }
 
-@Database(entities = [LessonPlan::class], version = 1)
+// Added exportSchema = false to fix the build warning
+@Database(entities = [LessonPlan::class], version = 1, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun lessonPlanDao(): LessonPlanDao
 
@@ -77,9 +91,8 @@ class LessonViewModel(application: Application) : AndroidViewModel(application) 
     private val dao = db.lessonPlanDao()
     
     // REPLACE WITH YOUR ACTUAL API KEY
-    private val apiKey = "gen-lang-client-0028939263"
+    private val apiKey = "YOUR_GEMINI_API_KEY_HERE" 
     
-    // Initialize Gemini Model
     private val generativeModel = GenerativeModel(
         modelName = "gemini-pro",
         apiKey = apiKey
@@ -125,17 +138,7 @@ class LessonViewModel(application: Application) : AndroidViewModel(application) 
 // 3. UI LAYER (JETPACK COMPOSE)
 // ==============================
 
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            MaterialTheme {
-                LessonPlannerApp()
-            }
-        }
-    }
-}
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LessonPlannerApp() {
     val viewModel: LessonViewModel = viewModel()
@@ -169,9 +172,9 @@ fun LessonPlannerApp() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePlanScreen(viewModel: LessonViewModel) {
-    // Form State
     var topic by remember { mutableStateOf("") }
     var className by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -189,14 +192,14 @@ fun CreatePlanScreen(viewModel: LessonViewModel) {
     ) {
         Text("New Lesson Plan", style = MaterialTheme.typography.headlineMedium)
 
-        OutlinedTextField(value = className, onValueChange = { className = it }, label = { Text("Class Name (e.g. Grade 5 Science)") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = className, onValueChange = { className = it }, label = { Text("Class Name") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = topic, onValueChange = { topic = it }, label = { Text("Topic") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text("Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = period, onValueChange = { period = it }, label = { Text("Period (e.g. 2nd Period)") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text("Date") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = period, onValueChange = { period = it }, label = { Text("Period") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(
             value = description, 
             onValueChange = { description = it }, 
-            label = { Text("Description/Specific Needs") }, 
+            label = { Text("Description") }, 
             modifier = Modifier.fillMaxWidth().height(100.dp),
             maxLines = 5
         )
@@ -234,7 +237,6 @@ fun CreatePlanScreen(viewModel: LessonViewModel) {
                         )
                         viewModel.saveLessonPlan(newPlan)
                         viewModel.clearCurrentPlan()
-                        // Optional: clear form fields here
                     }) {
                         Text("Save to Database")
                     }
@@ -258,6 +260,7 @@ fun SavedPlansScreen(viewModel: LessonViewModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LessonPlanItem(plan: LessonPlan) {
     var expanded by remember { mutableStateOf(false) }
@@ -276,7 +279,8 @@ fun LessonPlanItem(plan: LessonPlan) {
             }
             
             if (expanded) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                // FIXED: Changed HorizontalDivider to Divider
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(text = "AI Plan:", fontWeight = FontWeight.Bold)
                 Text(text = plan.generatedPlan, style = MaterialTheme.typography.bodyMedium)
             } else {
