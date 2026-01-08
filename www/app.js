@@ -15,7 +15,6 @@ window.onload = function() {
 // --- API KEY MANAGEMENT ---
 window.saveApiKey = function() {
     const input = document.getElementById('api-input').value.trim();
-    // Basic validation: Google keys usually start with AIza
     if (input.length > 20) {
         localStorage.setItem(API_STORAGE_KEY, input);
         document.getElementById('api-modal').classList.add('hidden');
@@ -28,14 +27,14 @@ window.saveApiKey = function() {
 window.clearKey = function() {
     if(confirm("Do you want to remove the API Key?")) {
         localStorage.removeItem(API_STORAGE_KEY);
-        location.reload(); // Refresh to show the modal again
+        location.reload(); 
     }
 }
 
 // --- CORE FUNCTIONS ---
 
 window.generatePlan = async function() {
-    // 1. GET KEY FRESH FROM STORAGE (Fixes the bug)
+    // 1. GET KEY FRESH FROM STORAGE
     const apiKey = localStorage.getItem(API_STORAGE_KEY);
     
     if (!apiKey) {
@@ -80,8 +79,8 @@ window.generatePlan = async function() {
         - [Homework]
         `;
 
-        // 2. FETCH REQUEST
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        // --- FIX IS HERE: CHANGED MODEL NAME TO 'gemini-1.5-flash-001' ---
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -91,10 +90,10 @@ window.generatePlan = async function() {
 
         const data = await response.json();
         
-        // 3. ERROR HANDLING
+        // ERROR HANDLING
         if (!response.ok) {
             console.error(data);
-            throw new Error(data.error?.message || "Invalid API Key");
+            throw new Error(data.error?.message || "Invalid API Key or Model Name");
         }
         
         const rawText = data.candidates[0].content.parts[0].text;
@@ -112,7 +111,7 @@ window.generatePlan = async function() {
         document.getElementById('result-card').classList.remove('hidden');
 
     } catch (error) {
-        alert("Error: " + error.message + "\n\nTip: Click 'Key Reset' and paste a valid key.");
+        alert("Error: " + error.message);
     } finally {
         // Reset UI
         btn.disabled = false;
@@ -142,8 +141,6 @@ window.exportToPdf = async function() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        // NOTE: For correct Nepali text in PDF, you need a .ttf file
-        // Ensure 'font.ttf' exists in the same folder as index.html
         const fontUrl = './font.ttf'; 
         
         try {
@@ -159,15 +156,13 @@ window.exportToPdf = async function() {
             doc.addFont('Nepali.ttf', 'Nepali', 'normal');
             doc.setFont('Nepali');
         } catch (e) {
-            console.warn("Font load failed, using default (Nepali may not show correctly)");
-            alert("Warning: 'font.ttf' file not found. Nepali text might look wrong in PDF.");
+            console.warn("Font load failed");
         }
 
         doc.setFontSize(16);
         doc.text(`Lesson Plan: ${currentLessonData.topic}`, 10, 20);
         
         doc.setFontSize(12);
-        // Basic cleanup of markdown symbols
         const cleanText = currentLessonData.content.replace(/[#*]/g, '');
         const lines = doc.splitTextToSize(cleanText, 180);
         
@@ -187,7 +182,7 @@ window.exportToPdf = async function() {
     }
 }
 
-// --- NAVIGATION & HISTORY DISPLAY ---
+// --- NAVIGATION ---
 
 window.switchView = function(viewName) {
     const create = document.getElementById('view-create');
@@ -244,4 +239,4 @@ window.loadFromHistory = function(index) {
     document.getElementById('ai-output').innerHTML = marked.parse(currentLessonData.content);
     document.getElementById('result-card').classList.remove('hidden');
     switchView('create');
-}
+                                 }
