@@ -1,7 +1,7 @@
 {
   "appId": "com.nepal.shikshak.ai",
   "appName": "Shikshak Sahaya",
-  "webDir": ".",
+  "webDir": "www",
   "server": {
     "androidScheme": "https"
   }
