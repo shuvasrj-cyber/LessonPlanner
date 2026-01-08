@@ -91,7 +91,7 @@ class LessonViewModel(application: Application) : AndroidViewModel(application) 
     private val dao = db.lessonPlanDao()
     
     // REPLACE WITH YOUR ACTUAL API KEY
-    private val apiKey = "YOUR_GEMINI_API_KEY_HERE" 
+    private val apiKey = "gen-lang-client-0028939263" 
     
     private val generativeModel = GenerativeModel(
         modelName = "gemini-pro",
