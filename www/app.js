@@ -141,7 +141,7 @@ window.exportToPdf = async function() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        const fontUrl = './font.ttf'; 
+        const fontUrl = './Kalimati.ttf'; 
         
         try {
             const fontBytes = await fetch(fontUrl).then(res => {
